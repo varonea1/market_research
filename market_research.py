@@ -94,7 +94,15 @@ higher education growth, labor workforce growth, and occupancy percentage growth
 
 # User Input
 st.sidebar.header("User Input")
+
 state_code = st.sidebar.text_input("Enter State Code", "39")
+# Sidebar link
+st.sidebar.markdown(
+    """
+    For a list of state codes, please visit the following [website](https://www.census.gov/library/reference/code-lists/ansi/ansi-codes-for-states.html).
+    """,
+    unsafe_allow_html=True
+)
 years = st.sidebar.multiselect("Select Years", ['2020', '2021', '2022'], ['2020', '2022'])
 features = ['population', 'occupancy', 'education', 'employment']  # Hardcoded features
 
