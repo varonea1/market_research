@@ -103,8 +103,8 @@ st.sidebar.markdown(
     """,
     unsafe_allow_html=True
 )
-years = st.sidebar.multiselect("Select Years", ['2020', '2021', '2022'], ['2020', '2022'])
-features = ['population', 'occupancy', 'education', 'employment']  # Hardcoded features
+years = ['2020', '2022']
+features = ['population', 'occupancy', 'education', 'employment', 'home_estimate', 'rent_estimate']  # Hardcoded features
 
 if state_code and years:
     # Load data using the user input
@@ -116,10 +116,21 @@ if state_code and years:
     # Ensure geo_id is included
     df_filtered.set_index('geo_id', inplace=True)
 
-    # Calculate the change from 2020 to 2022
+    # **Data Validation: Remove rows with 0 or less in critical features**
+    critical_features = ['total_population', 'total_in_labor_workforce', 'occupancy_status_occupied', 'total_occupancy_status', 'median_home_value', 'gross_rent']
+    for feature in critical_features:
+        df_filtered = df_filtered[df_filtered[feature] > 0]
+
+    # Separate the data by year
     df_2020 = df_filtered[df_filtered['reporting_date'] == '2020']
     df_2022 = df_filtered[df_filtered['reporting_date'] == '2022']
 
+    # **Remove non-matching rows based on geo_id**
+    matching_geo_ids = df_2020.index.intersection(df_2022.index)
+    df_2020 = df_2020.loc[matching_geo_ids]
+    df_2022 = df_2022.loc[matching_geo_ids]
+
+    # Calculate the change from 2020 to 2022
     df_change = df_2022.copy()
     df_change['population_change'] = df_2022['total_population'] - df_2020['total_population']
     df_change['labor_workforce_change'] = df_2022['total_in_labor_workforce'] - df_2020['total_in_labor_workforce']
@@ -133,22 +144,26 @@ if state_code and years:
         (df_2022['education_associates'] + df_2022['education_bachelors'] + df_2022['education_graduate']) -
         (df_2020['education_associates'] + df_2020['education_bachelors'] + df_2020['education_graduate'])
     )
+    
+    # Calculate cash flow 
+    df_change['cash_flow'] = df_2022['gross_rent'] / df_2022['median_home_value']
 
     # Normalize the data
     scaler = MinMaxScaler()
 
-    df_change[['population_change_norm', 'higher_education_change_norm', 'labor_workforce_change_norm', 'occupancy_pct_change_norm']] = scaler.fit_transform(
-        df_change[['population_change', 'higher_education_change', 'labor_workforce_change', 'occupancy_pct_change']]
+    df_change[['population_change_norm', 'higher_education_change_norm', 'labor_workforce_change_norm', 'occupancy_pct_change_norm', 'cash_flow_norm']] = scaler.fit_transform(
+        df_change[['population_change', 'higher_education_change', 'labor_workforce_change', 'occupancy_pct_change', 'cash_flow']]
     )
 
     # Weight the factors
     st.sidebar.header("Weighting Factors")
     population_weight = st.sidebar.slider("Population Change Weight", 0.0, 1.0, 0.4)
-    education_weight = st.sidebar.slider("Higher Education Change Weight", 0.0, 1.0, 0.2)
+    education_weight = st.sidebar.slider("Higher Education Change Weight", 0.0, 1.0, 0.1)
     labor_weight = st.sidebar.slider("Labor Workforce Change Weight", 0.0, 1.0, 0.2)
     occupancy_weight = st.sidebar.slider("Occupancy Percentage Change Weight", 0.0, 1.0, 0.2)
+    cash_flow_weight = st.sidebar.slider("Cash Flow Weight", 0.0, 1.0, 0.1)
 
-    total_weight = population_weight + education_weight + labor_weight + occupancy_weight
+    total_weight = round(population_weight + education_weight + labor_weight + occupancy_weight + cash_flow_weight, 2)
 
     if total_weight != 1.0:
         st.warning(f"Current weights do not sum to 1.0 (Sum = {total_weight:.2f}). Adjust the weights so that they sum to 1.0.")
@@ -157,7 +172,8 @@ if state_code and years:
             population_weight * df_change['population_change_norm'] +
             education_weight * df_change['higher_education_change_norm'] +
             labor_weight * df_change['labor_workforce_change_norm'] +
-            occupancy_weight * df_change['occupancy_pct_change_norm']
+            occupancy_weight * df_change['occupancy_pct_change_norm'] +
+            cash_flow_weight * df_change['cash_flow_norm']
         )
 
         # Rank the Census Tracts
