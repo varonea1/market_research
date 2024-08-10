@@ -95,8 +95,14 @@ higher education growth, labor workforce growth, and occupancy percentage growth
 # User Input
 st.sidebar.header("User Input")
 
-state_code = st.sidebar.text_input("Enter State Code", "39")
-# Sidebar link
+# Restrict state code to numbers 1 to 56
+state_code = st.sidebar.number_input("Enter State Code", min_value=1, max_value=56) # Sidebar link
+
+if state_code < 10:
+    state_code = f'0{state_code}'
+else:
+    state_code = str(state_code)
+
 st.sidebar.markdown(
     """
     For a list of state codes, please visit the following [website](https://www.census.gov/library/reference/code-lists/ansi/ansi-codes-for-states.html).
