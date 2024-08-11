@@ -89,7 +89,7 @@ def get_census_data(census_year_list, state_code_num, features, geographic_level
 st.title("Real Estate Investment Analysis")
 st.write("""
 This app helps you determine the best markets to invest in based on factors such as population growth, 
-higher education growth, labor workforce growth, and occupancy percentage growth.
+higher education growth, labor workforce growth, occupancy percentage growth, and current cash flow.
 """)
 
 # User Input
